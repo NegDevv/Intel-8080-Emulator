@@ -6,10 +6,10 @@
 #include <string.h>
 #include <stdlib.h>
 
-const char* instruction_table[256] = { "NOP", "LXI B,d16", "STAX B", "INX B", "INR B", "DCR B", "MVI B,d8", "RLC", "NOP", "DAD B", "LDAX B", "DCX B", "INR C", "DCR C", "MVI C,d8", "RRC",
-"NOP", "LXI D,d16", "STAX D", "INX D", "INR D", "DCR D", "MVI D,d8", "RAL", "NOP", "DAD D", "LDAX D", "DCX D", "INR E", "DCR E", "MVI E,d8", "RAR",
-"NOP", "LXI H,d16", "SHLD addr", "INX H", "INR H", "DCR H", "MVI H,d8", "DAA", "NOP", "DAD H", "LHLD addr", "DCX H", "INR L", "DCR L", "MVI L,d8", "CMA",
-"NOP", "LXI SP,d16", "STA addr", "INX SP", "INR M", "DCR M", "MVI M,d8", "STC", "NOP", "DAD SP", "LDA addr", "DCX SP", "INR A", "DCR A", "MVI A,d8", "CMC",
+const char* instruction_table[256] = { "NOP", "LXI B,d16", "STAX B", "INX B", "INR B", "DCR B", "MVI B,d8", "RLC", "*NOP", "DAD B", "LDAX B", "DCX B", "INR C", "DCR C", "MVI C,d8", "RRC",
+"*NOP", "LXI D,d16", "STAX D", "INX D", "INR D", "DCR D", "MVI D,d8", "RAL", "*NOP", "DAD D", "LDAX D", "DCX D", "INR E", "DCR E", "MVI E,d8", "RAR",
+"*NOP", "LXI H,d16", "SHLD addr", "INX H", "INR H", "DCR H", "MVI H,d8", "DAA", "*NOP", "DAD H", "LHLD addr", "DCX H", "INR L", "DCR L", "MVI L,d8", "CMA",
+"*NOP", "LXI SP,d16", "STA addr", "INX SP", "INR M", "DCR M", "MVI M,d8", "STC", "*NOP", "DAD SP", "LDA addr", "DCX SP", "INR A", "DCR A", "MVI A,d8", "CMC",
 "MOV B,B", "MOV B,C", "MOV B,D", "MOV B,E", "MOV B,H", "MOV B,L", "MOV B,M", "MOV B,A", "MOV C,B", "MOV C,C", "MOV C,D", "MOV C,E", "MOV C,H", "MOV C,L", "MOV C,M", "MOV C,A",
 "MOV D,B", "MOV D,C", "MOV D,D", "MOV D,E", "MOV D,H", "MOV D,L", "MOV D,M", "MOV D,A", "MOV E,B", "MOV E,C", "MOV E,D", "MOV E,E", "MOV E,H", "MOV E,L", "MOV E,M", "MOV E,A",
 "MOV H,B", "MOV H,C", "MOV H,D", "MOV H,E", "MOV H,H", "MOV H,L", "MOV H,M", "MOV H,A", "MOV L,B", "MOV L,C", "MOV L,D", "MOV L,E", "MOV L,H", "MOV L,L", "MOV L,M", "MOV L,A",
@@ -18,10 +18,10 @@ const char* instruction_table[256] = { "NOP", "LXI B,d16", "STAX B", "INX B", "I
 "SUB B", "SUB C", "SUB D", "SUB E", "SUB H", "SUB L", "SUB M", "SUB A", "SBB B", "SBB C", "SBB D", "SBB E", "SBB H", "SBB L", "SBB M", "SBB A",
 "ANA B", "ANA C", "ANA D", "ANA E", "ANA H", "ANA L", "ANA M", "ANA A","XRA B", "XRA C", "XRA D", "XRA E", "XRA H", "XRA L", "XRA M", "XRA A",
 "ORA B", "ORA C", "ORA D", "ORA E", "ORA H", "ORA L", "ORA M", "ORA A","CMP B", "CMP C", "CMP D", "CMP E", "CMP H", "CMP L", "CMP M", "CMP A",
-"RNZ", "POP B", "JNZ addr", "JMP addr", "CNZ addr", "PUSH B", "ADI d8", "RST 0", "RZ", "RET", "JZ addr", "JMP addr", "CZ addr", "CALL addr", "ACI d8", "RST 1",
-"RNC", "POP D", "JNC addr", "OUT d8", "CNC addr", "PUSH D", "SUI d8", "RST 2","RC", "RET", "JC addr", "IN d8", "CC addr", "CALL addr", "SBI d8", "RST 3",
-"RPO", "POP H", "JPO addr", "XTHL", "CPO addr", "PUSH H", "ANI d8", "RST 4", "RPE", "PCHL", "JPE addr", "XCHG", "CPE addr", "CALL addr", "XRI d8", "RST 5",
-"RP", "POP PSW", "JP addr", "DI", "CP addr", "PUSH PSW", "ORI d8", "RST 6", "RM", "SPHL", "JM addr", "EI", "CM addr", "CALL addr", "CPI d8", "RST 7" };
+"RNZ", "POP B", "JNZ addr", "JMP addr", "CNZ addr", "PUSH B", "ADI d8", "RST 0", "RZ", "RET", "JZ addr", "*JMP addr", "CZ addr", "CALL addr", "ACI d8", "RST 1",
+"RNC", "POP D", "JNC addr", "OUT d8", "CNC addr", "PUSH D", "SUI d8", "RST 2","RC", "*RET", "JC addr", "IN d8", "CC addr", "*CALL addr", "SBI d8", "RST 3",
+"RPO", "POP H", "JPO addr", "XTHL", "CPO addr", "PUSH H", "ANI d8", "RST 4", "RPE", "PCHL", "JPE addr", "XCHG", "CPE addr", "*CALL addr", "XRI d8", "RST 5",
+"RP", "POP PSW", "JP addr", "DI", "CP addr", "PUSH PSW", "ORI d8", "RST 6", "RM", "SPHL", "JM addr", "EI", "CM addr", "*CALL addr", "CPI d8", "RST 7" };
 
 
 int ReadFile(const char* file_name, byte** file_data, uint16_t* file_size)
@@ -119,16 +119,16 @@ int Disassemble()
 	printf("Intel 8080 Disassembler\n");
 	while (1)
 	{
-		int file_open = 0;
-		byte* object_file = NULL;
+		int file_read = 0;
+		byte* object_file_data = NULL;
 		uint16_t file_size = 0;
 		char file_name[256];
 
-		while (!file_open)
+		while (!file_read)
 		{
 			printf("Give file name to disassemble: ");
 			scanf_s("%255s", file_name, 256);
-			file_open = ReadFile(file_name, &object_file, &file_size);
+			file_read = ReadFile(file_name, &object_file_data, &file_size);
 		}
 		
 		int print_option = 0;
@@ -173,19 +173,19 @@ int Disassemble()
 		uint16_t PC = 0;
 		while(PC < file_size)
 		{
-			uint16_t instruction_length = GetCodeLine(object_file, object_file[PC] , &PC, code_line);
+			uint16_t instruction_length = GetCodeLine(object_file_data, object_file_data[PC] , &PC, code_line);
 
 			if (instruction_length == 1)
 			{
-				sprintf(print_line, "0x%02X %02X             %s \n", PC, object_file[PC], code_line);
+				sprintf(print_line, "0x%02X %02X             %s \n", PC, object_file_data[PC], code_line);
 			}
 			else if (instruction_length == 2)
 			{
-				sprintf(print_line, "0x%02X %02X %02X          %s \n", PC - 1, object_file[PC - 1], object_file[PC], code_line);
+				sprintf(print_line, "0x%02X %02X %02X          %s \n", PC - 1, object_file_data[PC - 1], object_file_data[PC], code_line);
 			}
 			else if (instruction_length == 3)
 			{
-				sprintf(print_line, "0x%02X %02X %02X %02X       %s \n", PC - 2, object_file[PC - 2], object_file[PC - 1], object_file[PC], code_line);
+				sprintf(print_line, "0x%02X %02X %02X %02X       %s \n", PC - 2, object_file_data[PC - 2], object_file_data[PC - 1], object_file_data[PC], code_line);
 			}
 
 			
@@ -211,8 +211,8 @@ int Disassemble()
 			fclose(disassembly_file);
 		}
 
-		free(object_file);
-		object_file = NULL;
+		free(object_file_data);
+		object_file_data = NULL;
 
 		if (print_option == 2 || print_option == 3)
 		{
