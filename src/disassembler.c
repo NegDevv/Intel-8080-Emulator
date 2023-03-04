@@ -18,10 +18,10 @@ const char* instruction_table[256] = { "NOP", "LXI B,d16", "STAX B", "INX B", "I
 "SUB B", "SUB C", "SUB D", "SUB E", "SUB H", "SUB L", "SUB M", "SUB A", "SBB B", "SBB C", "SBB D", "SBB E", "SBB H", "SBB L", "SBB M", "SBB A",
 "ANA B", "ANA C", "ANA D", "ANA E", "ANA H", "ANA L", "ANA M", "ANA A","XRA B", "XRA C", "XRA D", "XRA E", "XRA H", "XRA L", "XRA M", "XRA A",
 "ORA B", "ORA C", "ORA D", "ORA E", "ORA H", "ORA L", "ORA M", "ORA A","CMP B", "CMP C", "CMP D", "CMP E", "CMP H", "CMP L", "CMP M", "CMP A",
-"RNZ", "POP B", "JNZ addr", "JMP addr", "CNZ addr", "PUSH B", "ADI d8", "RST 0", "RZ", "RET", "JZ addr", "NOP", "CZ addr", "CALL addr", "ACI d8", "RST 1",
-"RNC", "POP D", "JNC addr", "OUT d8", "CNC addr", "PUSH D", "SUI d8", "RST 2","RC", "NOP", "JC addr", "IN d8", "CC addr", "NOP", "SBI d8", "RST 3",
-"RPO", "POP H", "JPO addr", "XTHL", "CPO addr", "PUSH H", "ANI d8", "RST 4", "RPE", "PCHL", "JPE addr", "XCHG", "CPE addr", "NOP", "XRI d8", "RST 5",
-"RP", "POP PSW", "JP addr", "DI", "CP addr", "PUSH PSW", "ORI d8", "RST 6", "RM", "SPHL", "JM addr", "EI", "CM addr", "NOP", "CPI d8", "RST 7" };
+"RNZ", "POP B", "JNZ addr", "JMP addr", "CNZ addr", "PUSH B", "ADI d8", "RST 0", "RZ", "RET", "JZ addr", "JMP addr", "CZ addr", "CALL addr", "ACI d8", "RST 1",
+"RNC", "POP D", "JNC addr", "OUT d8", "CNC addr", "PUSH D", "SUI d8", "RST 2","RC", "RET", "JC addr", "IN d8", "CC addr", "CALL addr", "SBI d8", "RST 3",
+"RPO", "POP H", "JPO addr", "XTHL", "CPO addr", "PUSH H", "ANI d8", "RST 4", "RPE", "PCHL", "JPE addr", "XCHG", "CPE addr", "CALL addr", "XRI d8", "RST 5",
+"RP", "POP PSW", "JP addr", "DI", "CP addr", "PUSH PSW", "ORI d8", "RST 6", "RM", "SPHL", "JM addr", "EI", "CM addr", "CALL addr", "CPI d8", "RST 7" };
 
 
 int ReadFile(const char* file_name, byte** file_data, uint16_t* file_size)
