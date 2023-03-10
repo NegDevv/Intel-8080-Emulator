@@ -1,8 +1,13 @@
 #include "disassembler.h"
+#include "8080.h"
 
 int main()
 {
-	Disassemble();
+	//Disassemble();
+
+	InitCPU();
+
+	Run();
 
 	return 0;
 }

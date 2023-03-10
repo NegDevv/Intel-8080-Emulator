@@ -1,8 +1,7 @@
 #include <stdint.h>
-
 typedef uint8_t byte;
 
-struct CPU
+struct cpu
 {
 	uint16_t PC;
 	uint16_t SP;
@@ -16,12 +15,22 @@ struct CPU
 	byte REG_H;
 	byte REG_L;
 
+	byte HLT;
+	byte INT;
+
 	byte IO_IN[256];
 	byte IO_OUT[256];
 
 	byte MEM[64000];
-} CPU;
+}CPU;
 
 const byte instruction_cycles_table[256];
 
 const byte instruction_cycles_table_secondary[256];
+
+void InitCPU();
+
+void Execute();
+
+void Run();
+

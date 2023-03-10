@@ -24,7 +24,7 @@ const char* instruction_table[256] = { "NOP", "LXI B,d16", "STAX B", "INX B", "I
 "RP", "POP PSW", "JP addr", "DI", "CP addr", "PUSH PSW", "ORI d8", "RST 6", "RM", "SPHL", "JM addr", "EI", "CM addr", "*CALL addr", "CPI d8", "RST 7" };
 
 
-int ReadFile(const char* file_name, byte** file_data, uint16_t* file_size)
+int LoadFile(const char* file_name, byte** file_data, uint16_t* file_size)
 {
 	FILE* object_file = fopen(file_name, "rb");
 	if (object_file != NULL)
@@ -128,7 +128,7 @@ int Disassemble()
 		{
 			printf("Give file name to disassemble: ");
 			scanf_s("%255s", file_name, 256);
-			file_read = ReadFile(file_name, &object_file_data, &file_size);
+			file_read = LoadFile(file_name, &object_file_data, &file_size);
 		}
 		
 		int print_option = 0;
