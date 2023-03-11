@@ -1,4 +1,5 @@
 #include <stdint.h>
+#include <stdbool.h>
 typedef uint8_t byte;
 
 struct cpu
@@ -15,8 +16,8 @@ struct cpu
 	byte REG_H;
 	byte REG_L;
 
-	byte HLT;
-	byte INT;
+	bool HLT;
+	bool INT;
 
 	byte IO_IN[256];
 	byte IO_OUT[256];
