@@ -1,5 +1,10 @@
 #ifndef DISASSEMBLER_H
 #define DISASSEMBLER_H
+
+#ifdef _MSC_VER
+#define _CRT_SECURE_NO_WARNINGS
+#endif
+
 #include <stdio.h>
 #include <stdint.h>
 // 111 = A
@@ -26,13 +31,16 @@
 
 // FLAGS  bit 7: sign, bit 6: zero, bit 5: NULL, bit 4: ac, bit 3: NULL, bit 2: parity, bit 1: NULL, bit 0: carry
 
-typedef uint8_t byte;
+#define DISASSEMBLY_LINE_PREFIX_LENGTH 23
+#define CODE_LINE_LENGTH 14
 
 const char* instruction_table[256];
 
-int LoadFile(const char* file_name, byte** file_data, uint16_t* file_size);
+int LoadFile(const char* file_name, uint8_t** file_data, uint16_t* file_size);
 
-uint16_t GetCodeLine(byte* object_file, byte instruction_byte, uint16_t* PC, char* code_line);
+uint8_t GetDisassemblyLine(uint8_t* MEM, uint16_t PC, char* print_line);
+
+uint8_t GetCodeLine(uint8_t* object_file, uint16_t* PC, char* code_line);
 
 int Disassemble();
 

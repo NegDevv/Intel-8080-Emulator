@@ -4,7 +4,7 @@
 #include <stdlib.h>
 
 
-const byte instruction_cycles_table[256] = {
+const uint8_t instruction_cycles_table[256] = {
 	4, 10, 7, 5, 5, 5, 7, 4, 4, 10, 7, 5, 5, 5, 7, 4,
 	4, 10, 7, 5, 5, 5, 7, 4, 4, 10, 7, 5, 5, 5, 7, 4,
 	4, 10, 16, 5, 5, 5, 7, 4, 4, 10, 16, 5, 5, 5, 7, 4,
@@ -23,7 +23,7 @@ const byte instruction_cycles_table[256] = {
 	5, 10, 10, 4, 11, 11, 7, 11, 5, 5, 10, 4, 11, 17, 7, 11
 };
 
-const byte instruction_cycles_table_secondary[256] = {
+const uint8_t instruction_cycles_table_secondary[256] = {
 	4, 10, 7, 5, 5, 5, 7, 4, 4, 10, 7, 5, 5, 5, 7, 4,
 	4, 10, 7, 5, 5, 5, 7, 4, 4, 10, 7, 5, 5, 5, 7, 4,
 	4, 10, 16, 5, 5, 5, 7, 4, 4, 10, 16, 5, 5, 5, 7, 4,
@@ -41,23 +41,6 @@ const byte instruction_cycles_table_secondary[256] = {
 	11, 10, 10, 18, 17, 11, 7, 11, 11, 5, 10, 5, 17, 17, 7, 11,
 	11, 10, 10, 4, 17, 11, 7, 11, 11, 5, 10, 4, 17, 17, 7, 11
 };
-
-#define BYTE_TO_BINARY_PATTERN "%c%c%c%c%c%c%c%c"
-#define BYTE_TO_BINARY(byte)  \
-  (byte & 0x80 ? '1' : '0'), \
-  (byte & 0x40 ? '1' : '0'), \
-  (byte & 0x20 ? '1' : '0'), \
-  (byte & 0x10 ? '1' : '0'), \
-  (byte & 0x08 ? '1' : '0'), \
-  (byte & 0x04 ? '1' : '0'), \
-  (byte & 0x02 ? '1' : '0'), \
-  (byte & 0x01 ? '1' : '0') 
-
-#define CARRY_FLAG_BIT 0
-#define PARITY_FLAG_BIT 2
-#define AUX_CARRY_FLAG_BIT 4
-#define ZERO_FLAG_BIT 6
-#define SIGN_FLAG_BIT 7
 
 void PrintCPUState()
 {
@@ -93,20 +76,30 @@ void InitCPU()
 
 	CPU.HLT = 0;
 	CPU.INT = 0;
+
+	memset(CPU.MEM, 0, MEMORY_SIZE);
 }
 
-// Changes n bit to value indicated by parameter bit. n = 0 is the least significant bit
+void Interrupt()
+{
+
+}
+
+// Changes n bit to value indicated by parameter value. n = 0 is the least significant bit
 uint8_t ChangeNBit(uint8_t num, uint8_t n, bool value)
 {
 	return num & ~(1 << n) | (value << n);
 }
 
-void ZeroFlag(byte result)
+// Carry for addition value_1 + value_2 (+ carry)
+void CarryFlag(uint8_t value_1, uint8_t value_2, bool carry)
 {
-	CPU.FLAGS = ChangeNBit(CPU.FLAGS, ZERO_FLAG_BIT, (result == 0));
+	int16_t result = value_1 + value_2 + carry;
+	int16_t c = result ^ value_1 ^ value_2;
+	ChangeNBit(CPU.FLAGS, CARRY_FLAG_BIT, c & (1 << 8));
 }
 
-void ParityFlag(byte result)
+void ParityFlag(uint8_t result)
 {
 	uint8_t set_bits = 0;
 	// Count number of set (1) bits
@@ -114,8 +107,32 @@ void ParityFlag(byte result)
 	{
 		set_bits += ((result >> i) & 1);
 	}
-	// Sets parity flag (1) if number of set (1) bits is odd, otherwise parity flag is reset (0)
+	// Sets parity flag (1) if number of set (1) bits is odd, otherwise parity flag is cleared (0)
 	CPU.FLAGS = ChangeNBit(CPU.FLAGS, PARITY_FLAG_BIT, ((set_bits & 1) == 1));
+}
+
+void AuxCarryFlag(uint8_t value_1, uint8_t value_2, bool carry)
+{
+	int16_t result = value_1 + value_2 + carry;
+	int16_t c = result ^ value_1 ^ value_2;
+	ChangeNBit(CPU.FLAGS, AUX_CARRY_FLAG_BIT, c & (1 << 4));
+}
+
+void ZeroFlag(uint8_t result)
+{
+	CPU.FLAGS = ChangeNBit(CPU.FLAGS, ZERO_FLAG_BIT, (result == 0));
+}
+
+void SignFlag(uint8_t result)
+{
+	CPU.FLAGS = ChangeNBit(CPU.FLAGS, SIGN_FLAG_BIT, (result & 0b10000000) >> 7);
+}
+
+void ZeroSignParity(uint8_t value)
+{
+	ZeroFlag(value);
+	SignFlag(value);
+	ParityFlag(value);
 }
 
 bool GetCarryFlag()
@@ -144,14 +161,40 @@ bool GetSignFlag()
 }
 
 
+void ClearCarryFlag()
+{
+	CPU.FLAGS = ChangeNBit(CPU.FLAGS, CARRY_FLAG_BIT, 0);
+}
+
+void ClearParityFlag()
+{
+	CPU.FLAGS = ChangeNBit(CPU.FLAGS, PARITY_FLAG_BIT, 0);
+}
+
 void ClearAuxCarryFlag()
 {
 	CPU.FLAGS = ChangeNBit(CPU.FLAGS, AUX_CARRY_FLAG_BIT, 0);
 }
 
-void ClearCarryFlag()
+void ClearZeroFlag()
 {
-	CPU.FLAGS = ChangeNBit(CPU.FLAGS, CARRY_FLAG_BIT, 0);
+	CPU.FLAGS = ChangeNBit(CPU.FLAGS, ZERO_FLAG_BIT, 0);
+}
+
+void ClearSignFlag()
+{
+	CPU.FLAGS = ChangeNBit(CPU.FLAGS, SIGN_FLAG_BIT, 0);
+}
+
+
+void SetCarryFlag()
+{
+	CPU.FLAGS = ChangeNBit(CPU.FLAGS, CARRY_FLAG_BIT, 1);
+}
+
+void SetParityFlag()
+{
+	CPU.FLAGS = ChangeNBit(CPU.FLAGS, PARITY_FLAG_BIT, 1);
 }
 
 void SetAuxCarryFlag()
@@ -159,41 +202,16 @@ void SetAuxCarryFlag()
 	CPU.FLAGS = ChangeNBit(CPU.FLAGS, AUX_CARRY_FLAG_BIT, 1);
 }
 
-void SetCarryFlag()
-{
-	CPU.FLAGS = ChangeNBit(CPU.FLAGS, CARRY_FLAG_BIT, 1);
-}
-
-void SignFlag(byte result)
-{
-	CPU.FLAGS = ChangeNBit(CPU.FLAGS, SIGN_FLAG_BIT, (result & 0b10000000) >> 7);
-}
-
 void SetZeroFlag()
 {
 	CPU.FLAGS = ChangeNBit(CPU.FLAGS, ZERO_FLAG_BIT, 1);
 }
 
-void ZeroSignParity(byte value)
+void SetSignFlag()
 {
-	ZeroFlag(value);
-	SignFlag(value);
-	ParityFlag(value);
+	CPU.FLAGS = ChangeNBit(CPU.FLAGS, SIGN_FLAG_BIT, 1);
 }
 
-// Carry for addition value_1 + value_2 (+ carry)
-void CarryFlag(byte value_1, byte value_2, bool carry)
-{
-	int16_t result = value_1 + value_2 + carry;
-	int16_t c = result ^ value_1 ^ value_2;
-	ChangeNBit(CPU.FLAGS, CARRY_FLAG_BIT, c & (1 << 8));
-}
-void AuxCarryFlag(byte value_1, byte value_2, bool carry)
-{
-	int16_t result = value_1 + value_2 + carry;
-	int16_t c = result ^ value_1 ^ value_2;
-	ChangeNBit(CPU.FLAGS, AUX_CARRY_FLAG_BIT, c & (1 << 4));
-}
 
 // Combine register pair into one 16-bit value
 uint16_t CombineRP(uint8_t high_order_byte, uint8_t low_order_byte)
@@ -208,7 +226,8 @@ void StoreRP(uint8_t* high_order_register, uint8_t* low_order_register, uint16_t
 	*low_order_register = number & 0x00FF;
 }
 
-void ADD(byte value_1, byte value_2, bool carry)
+
+void ADD(uint8_t value_1, uint8_t value_2, bool carry)
 {
 	CPU.REG_A = value_1 + value_2 + carry;
 	CarryFlag(value_1, value_2, carry);
@@ -216,13 +235,13 @@ void ADD(byte value_1, byte value_2, bool carry)
 	ZeroSignParity(CPU.REG_A);
 }
 
-void SUB(byte value_1, byte value_2, bool carry)
+void SUB(uint8_t value_1, uint8_t value_2, bool carry)
 {
 	ADD(value_1, ~value_2, !carry);
 	CPU.FLAGS = ChangeNBit(CPU.FLAGS, CARRY_FLAG_BIT, !GetCarryFlag());
 }
 
-byte INR(byte value)
+uint8_t INR(uint8_t value)
 {
 	uint8_t result = value + 1;
 	CPU.FLAGS = ChangeNBit(CPU.FLAGS, AUX_CARRY_FLAG_BIT, (result & 0xF) == 0);
@@ -230,7 +249,7 @@ byte INR(byte value)
 	return result;
 }
 
-byte DCR(byte value)
+uint8_t DCR(uint8_t value)
 {
 	uint8_t result = value - 1;
 	CPU.FLAGS = ChangeNBit(CPU.FLAGS, AUX_CARRY_FLAG_BIT, !((result & 0xF) == 0xF));
@@ -238,7 +257,7 @@ byte DCR(byte value)
 	return result;
 }
 
-void ANA(byte value)
+void ANA(uint8_t value)
 {
 	uint8_t result = CPU.REG_A & value;
 	ClearCarryFlag();
@@ -247,7 +266,7 @@ void ANA(byte value)
 	CPU.REG_A = result;
 }
 
-void XRA(byte value)
+void XRA(uint8_t value)
 {
 	CPU.REG_A ^= value;
 	ClearCarryFlag();
@@ -255,7 +274,7 @@ void XRA(byte value)
 	ZeroSignParity(CPU.REG_A);
 }
 
-void ORA(byte value)
+void ORA(uint8_t value)
 {
 	CPU.REG_A |= value;
 	ClearCarryFlag();
@@ -263,7 +282,7 @@ void ORA(byte value)
 	ZeroSignParity(CPU.REG_A);
 }
 
-void CMP(byte value_1, byte value_2)
+void CMP(uint8_t value_1, uint8_t value_2)
 {
 	int16_t result = value_1 - value_2;
 	CPU.FLAGS = ChangeNBit(CPU.FLAGS, CARRY_FLAG_BIT, result >> 8);
@@ -276,7 +295,7 @@ void RET()
 	uint8_t low_order_byte = CPU.MEM[CPU.SP];
 	uint8_t high_order_byte = CPU.MEM[++CPU.SP]; // Increment SP by 1
 	uint16_t addr = CombineRP(high_order_byte, low_order_byte);
-	CPU.PC = addr;
+	CPU.PC = addr - 1;
 	CPU.SP += 1; // Increment SP by 1
 }
 
@@ -284,7 +303,7 @@ void JMP()
 {
 	// Since program counter gets incremented at the end of the Execute function decrement target PC by 1 for all branch instructons
 	// (less typing since most instructions dont manipulate PC directly)
-	CPU.PC = ((uint16_t)(CPU.MEM[CPU.PC + 1]) | (CPU.MEM[CPU.PC + 2] << 8)) - 1;
+	CPU.PC = ((uint16_t)(CPU.MEM[CPU.PC + 1]) | (uint16_t)(CPU.MEM[CPU.PC + 2] << 8)) - 1;
 }
 
 void CALL()
@@ -298,11 +317,22 @@ void CALL()
 	CPU.PC = ((uint16_t)(CPU.MEM[CPU.PC + 1]) | CPU.MEM[CPU.PC + 2] << 8) - 1;
 }
 
+void IO_OUT()
+{
+	uint8_t port = CPU.MEM[++CPU.PC];
+	CPU.IO_OUT[port] = CPU.REG_A;
+}
+
+void IO_IN()
+{
+	uint8_t port = CPU.MEM[++CPU.PC];
+	CPU.REG_A = CPU.IO_IN[port];
+}
 
 void Execute()
 {
 	// Get next instruction
-	byte op_code = CPU.MEM[CPU.PC];
+	uint8_t op_code = CPU.MEM[CPU.PC];
 	switch (op_code) 
 	{
 		case 0x00:	//NOP
@@ -404,7 +434,7 @@ void Execute()
 		case 0x19:	//DAD D
 		{
 			uint16_t HL = CombineRP(CPU.REG_H, CPU.REG_L);
-			uint16_t DE = CombineRP(CPU.REG_E, CPU.REG_E);
+			uint16_t DE = CombineRP(CPU.REG_D, CPU.REG_E);
 			CPU.FLAGS = ChangeNBit(CPU.FLAGS, CARRY_FLAG_BIT, ((HL + DE) >> 16) & 1);
 			StoreRP(&CPU.REG_H, &CPU.REG_L, HL + DE);
 		}
@@ -487,7 +517,6 @@ void Execute()
 			ADD(CPU.REG_A, correction, 0);
 			CPU.FLAGS = ChangeNBit(CPU.FLAGS, CARRY_FLAG_BIT, carry); // Set carry bit
 		}
-			
 			break;
 		case 0x28:	//*NOP
 			break;
@@ -549,14 +578,14 @@ void Execute()
 		case 0x34:	//INR M
 		{
 			uint16_t addr = CombineRP(CPU.REG_H, CPU.REG_L);
-			byte temp = CPU.MEM[addr];
+			uint8_t temp = CPU.MEM[addr];
 			CPU.MEM[addr] = INR(temp);
 		}
 			break;
 		case 0x35:	//DCR M
 		{
 			uint16_t addr = CombineRP(CPU.REG_H, CPU.REG_L);
-			byte temp = CPU.MEM[addr];
+			uint8_t temp = CPU.MEM[addr];
 			CPU.MEM[addr] = DCR(temp);
 		}
 			break;
@@ -781,6 +810,7 @@ void Execute()
 			break;
 		case 0x7C:	//MOV A,H
 			CPU.REG_A = CPU.REG_H;
+			break;
 		case 0x7D:	//MOV A,L
 			CPU.REG_A = CPU.REG_L;
 			break;
@@ -1026,6 +1056,10 @@ void Execute()
 			{
 				JMP();
 			}
+			else
+			{
+				CPU.PC += 2;
+			}
 			break;
 		case 0xC3:	//JMP addr
 			JMP();
@@ -1034,6 +1068,10 @@ void Execute()
 			if (!GetZeroFlag())
 			{
 				CALL();
+			}
+			else
+			{
+				CPU.PC += 2;
 			}
 			break;
 		case 0xC5:	//PUSH B
@@ -1069,6 +1107,10 @@ void Execute()
 			{
 				JMP();
 			}
+			else
+			{
+				CPU.PC += 2;
+			}
 			break;
 		case 0xCB:	//*JMP addr
 			break;
@@ -1076,6 +1118,10 @@ void Execute()
 			if (GetZeroFlag())
 			{
 				CALL();
+			}
+			else
+			{
+				CPU.PC += 2;
 			}
 			break;
 		case 0xCD:	//CALL addr
@@ -1113,14 +1159,22 @@ void Execute()
 			{
 				JMP();
 			}
+			else
+			{
+				CPU.PC += 2;
+			}
 			break;
 		case 0xD3:	//OUT d8
-			CPU.IO_OUT[CPU.MEM[++CPU.PC]] = CPU.REG_A;
+			IO_OUT();
 			break;
 		case 0xD4:	//CNC addr
 			if (!GetCarryFlag())
 			{
 				CALL();
+			}
+			else
+			{
+				CPU.PC += 2;
 			}
 			break;
 		case 0xD5:	//PUSH D
@@ -1155,14 +1209,22 @@ void Execute()
 			{
 				JMP();
 			}
+			else
+			{
+				CPU.PC += 2;
+			}
 			break;
 		case 0xDB:	//IN d8
-			CPU.REG_A = CPU.IO_IN[CPU.MEM[++CPU.PC]];
+			IO_IN();
 			break;
 		case 0xDC:	//CC addr
 			if (GetCarryFlag())
 			{
 				CALL();
+			}
+			else
+			{
+				CPU.PC += 2;
 			}
 			break;
 		case 0xDD:	//*CALL addr
@@ -1199,6 +1261,10 @@ void Execute()
 			{
 				JMP();
 			}
+			else
+			{
+				CPU.PC += 2;
+			}
 			break;
 		case 0xE3:	//XTHL
 		{
@@ -1216,6 +1282,10 @@ void Execute()
 			if (!GetParityFlag())
 			{
 				CALL();
+			}
+			else
+			{
+				CPU.PC += 2;
 			}
 			break;
 		case 0xE5:	//PUSH H
@@ -1251,6 +1321,10 @@ void Execute()
 			{
 				JMP();
 			}
+			else
+			{
+				CPU.PC += 2;
+			}
 			break;
 		case 0xEB:	//XCHG
 		{
@@ -1268,6 +1342,10 @@ void Execute()
 			if (GetParityFlag())
 			{
 				CALL();
+			}
+			else
+			{
+				CPU.PC += 2;
 			}
 			break;
 		case 0xED:	//*CALL addr
@@ -1304,6 +1382,10 @@ void Execute()
 			{
 				JMP();
 			}
+			else
+			{
+				CPU.PC += 2;
+			}
 			break;
 		case 0xF3:	//DI
 			CPU.INT = 0;
@@ -1312,6 +1394,10 @@ void Execute()
 			if (!GetSignFlag())
 			{
 				CALL();
+			}
+			else
+			{
+				CPU.PC += 2;
 			}
 			break;
 		case 0xF5:	//PUSH PSW
@@ -1347,6 +1433,10 @@ void Execute()
 			{
 				JMP();
 			}
+			else
+			{
+				CPU.PC += 2;
+			}
 			break;
 		case 0xFB:	//EI
 			CPU.INT = 1;
@@ -1355,6 +1445,10 @@ void Execute()
 			if (GetSignFlag())
 			{
 				CALL();
+			}
+			else
+			{
+				CPU.PC += 2;
 			}
 			break;
 		case 0xFD:	//*CALL addr
@@ -1374,13 +1468,13 @@ void Execute()
 	}
 
 	CPU.PC++; // Increment program counter
-	PrintCPUState();
+	//PrintCPUState();
 }
 
 void LoadProgram()
 {
 	int file_read = 0;
-	byte* object_file_data = NULL;
+	uint8_t* object_file_data = NULL;
 	uint16_t file_size = 0;
 	char file_name[256];
 
@@ -1388,10 +1482,12 @@ void LoadProgram()
 	{
 		printf("Give program file name: ");
 		scanf_s("%255s", file_name, 256);
+		fseek(stdin, 0, SEEK_END);
 		file_read = LoadFile(file_name, &object_file_data, &file_size);
 	}
 
-	CPU.PC = 0x0100;
+
+	CPU.PC = 0x0000;
 	memcpy(&CPU.MEM[CPU.PC], object_file_data, file_size);
 
 	printf("%s loaded at 0x%X\n\n", file_name, CPU.PC);
@@ -1400,29 +1496,119 @@ void LoadProgram()
 	object_file_data = NULL;
 }
 
+void StepThroughProgram(uint64_t *instructions_executed)
+{
+	int32_t intstructions_to_run = 0;
+	int option = 0;
+	char code_line[CODE_LINE_LENGTH];
+	char print_line[DISASSEMBLY_LINE_PREFIX_LENGTH + CODE_LINE_LENGTH];
+
+	while (!test_finished)
+	{
+		if (intstructions_to_run <= 0)
+		{
+			while (1)
+			{
+				printf("\n");
+				GetDisassemblyLine(&CPU.MEM, CPU.PC, print_line);
+				
+				printf("1 Execute the next instruction [ %s]\n2 Execute specified amount of instructions\n3 Print CPU state\n", print_line);
+				scanf_s("%1d", &option);
+				fseek(stdin, 0, SEEK_END);
+
+				if (option == 1)
+				{
+					printf("\n");
+					break;
+				}
+				else if (option == 3)
+				{
+					break;
+				}
+				else if (option == 2)
+				{
+					printf("Give amount of instructions to execute\n");
+					scanf_s("%d", &intstructions_to_run);
+					fseek(stdin, 0, SEEK_END);
+					printf("\n");
+					break;
+				}
+			}
+		}
+
+		// Print disassembly of code to be executed
+		if (option == 1 || option == 2)
+		{
+			printf("%llu: ", *instructions_executed + 1);
+			GetDisassemblyLine(&CPU.MEM, CPU.PC, print_line);
+			printf("%s\n", print_line);
+
+			Execute();
+
+			*instructions_executed += 1;
+			intstructions_to_run -= 1;
+		}
+		// Print CPU state
+		else if (option == 3)
+		{
+			PrintCPUState();
+		}
+	}
+}
+
 void Run()
 {
 
 	LoadProgram();
 
-	uint64_t cycle_start_time = ns(), cycle_end_time = ns(), cycle_time = 0;
+	
+	int run_option = 0;
 
+	while (1)
+	{
+		printf("1. Run program\n2. Step through program\n");
+		scanf_s("%1d", &run_option);
+		fseek(stdin, 0, SEEK_END);
+
+		if (run_option == 1 || run_option == 2)
+		{
+			break;
+		}
+	}
+
+	uint64_t cycle_start_time = ns(), cycle_end_time = ns(), cycle_time = 0;
 
 	const uint64_t clock_frq = 2'000'000;
 	uint64_t clock_in_ns = 1e9 / clock_frq;
 
+	uint64_t instructions_executed = 0;
 
-	while (1)
+	test_finished = false;
+
+	// Invaders stuck in infinite loop after instruction 42044 (waiting for IO)
+
+	// Run a program
+	if (run_option == 0)
 	{
-		cycle_time = cycle_end_time - cycle_start_time;
-		if (cycle_time >= clock_in_ns)
+		while (!test_finished)
 		{
-			printf("cycle time: %lluns\n----------------------\n", cycle_time);
-			cycle_start_time = ns();
+			cycle_time = cycle_end_time - cycle_start_time;
+			if (cycle_time >= clock_in_ns)
+			{
+				//printf("cycle time: %lluns\n----------------------\n", cycle_time);
+				cycle_start_time = ns();
 
-			Execute();
+				Execute();
+				instructions_executed += 1;
+			}
+			cycle_end_time = ns();
 		}
-		cycle_end_time = ns();
+		printf("Test finished\nInstructions executed: %llu\n", instructions_executed);
 	}
-
+	// Step through a program
+	else if(run_option == 2)
+	{
+		StepThroughProgram(&instructions_executed);
+		printf("Test finished\nInstructions executed: %llu\n", instructions_executed);
+	}
 }

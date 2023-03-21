@@ -1,7 +1,3 @@
-#ifdef _MSC_VER
-#define _CRT_SECURE_NO_WARNINGS
-#endif
-
 #include "disassembler.h"
 #include <string.h>
 #include <stdlib.h>
@@ -24,7 +20,7 @@ const char* instruction_table[256] = { "NOP", "LXI B,d16", "STAX B", "INX B", "I
 "RP", "POP PSW", "JP addr", "DI", "CP addr", "PUSH PSW", "ORI d8", "RST 6", "RM", "SPHL", "JM addr", "EI", "CM addr", "*CALL addr", "CPI d8", "RST 7" };
 
 
-int LoadFile(const char* file_name, byte** file_data, uint16_t* file_size)
+int LoadFile(const char* file_name, uint8_t** file_data, uint16_t* file_size)
 {
 	FILE* object_file = fopen(file_name, "rb");
 	if (object_file != NULL)
@@ -35,10 +31,10 @@ int LoadFile(const char* file_name, byte** file_data, uint16_t* file_size)
 		{
 			fseek(object_file, 0, SEEK_SET);
 			*file_size = size;
-			*file_data = malloc(*file_size * sizeof(byte));
+			*file_data = malloc(*file_size * sizeof(uint8_t));
 			if (*file_data != NULL)
 			{
-				fread(*file_data, sizeof(byte), *file_size, object_file);
+				fread(*file_data, sizeof(uint8_t), *file_size, object_file);
 				printf("Read %u bytes from file \"%s\"\n", *file_size, file_name);
 			}
 			else
@@ -64,11 +60,11 @@ int LoadFile(const char* file_name, byte** file_data, uint16_t* file_size)
 	return 1;
 }
 
-
-uint16_t GetCodeLine(byte* object_file, byte instruction_byte, uint16_t* PC, char* code_line)
+uint8_t GetCodeLine(uint8_t* object_file, uint16_t* PC, char* code_line)
 {
-	uint16_t instruction_length = 1;
+	uint8_t instruction_length = 1;
 
+	uint8_t instruction_byte = object_file[*PC];
 	strcpy(code_line, instruction_table[instruction_byte]);
 	const char d8[] = "d8";
 	const char d16[] = "d16";
@@ -77,7 +73,7 @@ uint16_t GetCodeLine(byte* object_file, byte instruction_byte, uint16_t* PC, cha
 	char* pos = strstr(code_line, d8);
 	if (pos != NULL)
 	{
-		byte data_byte = object_file[++(*PC)];
+		uint8_t data_byte = object_file[++(*PC)];
 		char data_hex[5];
 		sprintf(data_hex, "#$%02X", data_byte);
 		strcpy(pos, data_hex);
@@ -88,8 +84,8 @@ uint16_t GetCodeLine(byte* object_file, byte instruction_byte, uint16_t* PC, cha
 		pos = strstr(code_line, d16);
 		if (pos != NULL)
 		{
-			byte low_operand = object_file[++(*PC)];
-			byte high_operand = object_file[++(*PC)];
+			uint8_t low_operand = object_file[++(*PC)];
+			uint8_t high_operand = object_file[++(*PC)];
 			char data_hex[7];
 			sprintf(data_hex, "#$%02X%02X", high_operand, low_operand);
 			strcpy(pos, data_hex);
@@ -100,8 +96,8 @@ uint16_t GetCodeLine(byte* object_file, byte instruction_byte, uint16_t* PC, cha
 			pos = strstr(code_line, a16);
 			if (pos != NULL)
 			{
-				byte low_operand = object_file[++(*PC)];
-				byte high_operand = object_file[++(*PC)];
+				uint8_t low_operand = object_file[++(*PC)];
+				uint8_t high_operand = object_file[++(*PC)];
 				char data_hex[6];
 				sprintf(data_hex, "$%02X%02X", high_operand, low_operand);
 				strcpy(pos, data_hex);
@@ -113,6 +109,25 @@ uint16_t GetCodeLine(byte* object_file, byte instruction_byte, uint16_t* PC, cha
 	return instruction_length;
 }
 
+uint8_t GetDisassemblyLine(uint8_t* MEM, uint16_t PC, char* print_line)
+{
+	char code_line[CODE_LINE_LENGTH];
+	uint8_t instruction_length = GetCodeLine(MEM, &PC, code_line);
+
+	if (instruction_length == 1)
+	{
+		sprintf(print_line, "0x%02X %02X             %s ", PC, MEM[PC], code_line);
+	}
+	else if (instruction_length == 2)
+	{
+		sprintf(print_line, "0x%02X %02X %02X          %s ", PC - 1, MEM[PC - 1], MEM[PC], code_line);
+	}
+	else if (instruction_length == 3)
+	{
+		sprintf(print_line, "0x%02X %02X %02X %02X       %s ", PC - 2, MEM[PC - 2], MEM[PC - 1], MEM[PC], code_line);
+	}
+	return instruction_length;
+}
 
 int Disassemble()
 {
@@ -120,7 +135,7 @@ int Disassemble()
 	while (1)
 	{
 		int file_read = 0;
-		byte* object_file_data = NULL;
+		uint8_t* object_file_data = NULL;
 		uint16_t file_size = 0;
 		char file_name[256];
 
@@ -167,43 +182,28 @@ int Disassemble()
 			}
 		}
 
-		char code_line[14];
-		char print_line[24 + 14];
+		char print_line[DISASSEMBLY_LINE_PREFIX_LENGTH + CODE_LINE_LENGTH];
 
 		uint16_t PC = 0;
 		while(PC < file_size)
 		{
-			uint16_t instruction_length = GetCodeLine(object_file_data, object_file_data[PC] , &PC, code_line);
-
-			if (instruction_length == 1)
-			{
-				sprintf(print_line, "0x%02X %02X             %s \n", PC, object_file_data[PC], code_line);
-			}
-			else if (instruction_length == 2)
-			{
-				sprintf(print_line, "0x%02X %02X %02X          %s \n", PC - 1, object_file_data[PC - 1], object_file_data[PC], code_line);
-			}
-			else if (instruction_length == 3)
-			{
-				sprintf(print_line, "0x%02X %02X %02X %02X       %s \n", PC - 2, object_file_data[PC - 2], object_file_data[PC - 1], object_file_data[PC], code_line);
-			}
-
+			uint8_t instruction_length = GetDisassemblyLine(object_file_data, PC, print_line);
 			
 			if (print_option == 1)
 			{
-				printf(print_line);
+				printf("%s\n", print_line);
 			}
 			else if (print_option == 2)
 			{
-				fprintf(disassembly_file, print_line);
+				fprintf(disassembly_file, "%s\n", print_line);
 			}
 			else if (print_option == 3)
 			{
-				printf(print_line);
-				fprintf(disassembly_file, print_line);
+				printf("%s\n", print_line);
+				fprintf(disassembly_file, "%s\n", print_line);
 			}
 
-			PC += 1;
+			PC += instruction_length;
 		}
 
 		if (disassembly_file != NULL)
@@ -238,6 +238,6 @@ int Disassemble()
 			break;
 		}
 	}
-	printf("Quitting...");
+	printf("Exiting disassembler...");
 	return 0;
 }
