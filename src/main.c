@@ -3,13 +3,11 @@
 
 int main()
 {
-	int option = 0;
+	uint32_t option = 0;
 	while (true)
 	{
 		printf("Intel 8080 Emulator\n");
-		printf("1. Emulator\n2. Disassembler\n3. Quit\n");
-		scanf_s("%1d", &option);
-		fseek(stdin, 0, SEEK_END);
+		option = NumInputPrompt("1. Emulator\n2. Disassembler\n3. Quit\n");
 		printf("\n");
 
 		// Emulator
@@ -30,12 +28,7 @@ int main()
 			printf("Quitting...");
 			break;
 		}
-		else
-		{
-			printf("Invalid input!\n\n");
-		}
 	}
 	
-
 	return 0;
 }

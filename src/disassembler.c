@@ -1,4 +1,5 @@
 #include "disassembler.h"
+#include "utils.h"
 #include <string.h>
 #include <stdlib.h>
 
@@ -141,19 +142,15 @@ int Disassemble()
 
 		while (!file_read)
 		{
-			printf("Give file name to disassemble: ");
-			scanf_s("%255s", file_name, 256);
-			fseek(stdin, 0, SEEK_END);
+			TextInputPrompt("Give file name to disassemble: ", file_name);
 			file_read = LoadFile(file_name, &object_file_data, &file_size);
 		}
 		
-		int print_option = 0;
+		uint32_t print_option = 0;
 		
 		while (1)
 		{
-			printf("Print disassembly to:\n1. console\n2. text file\n3. Both\n");
-			scanf_s("%1d", &print_option);
-			fseek(stdin, 0, SEEK_END);
+			print_option = NumInputPrompt("Print disassembly to:\n1. console\n2. text file\n3. Both\n");
 
 			if (print_option == 1 || print_option == 2 || print_option == 3)
 			{
@@ -168,9 +165,7 @@ int Disassemble()
 		{
 			while (1)
 			{
-				printf("Give the disassembly text file name: ");
-				scanf_s("%255s", disassembly_file_name, 256);
-				fseek(stdin, 0, SEEK_END);
+				TextInputPrompt("Give the disassembly text file name: ", disassembly_file_name);
 				disassembly_file = fopen(disassembly_file_name, "w");
 
 				if (disassembly_file == NULL)
@@ -221,14 +216,12 @@ int Disassemble()
 			printf("Wrote disassembly of %s into file %s\n", file_name, disassembly_file_name);
 		}
 
-		char answer[2];
+		char answer[256];
 		printf("\n");
 		while (1)
 		{
-			printf("Disassemble another file? y/n\n");
-			scanf_s("%1s", answer, 2);
-			fseek(stdin, 0, SEEK_END);
-
+			TextInputPrompt("Disassemble another file? y/n\n", answer);
+			
 			if (answer[0] == 'y' || answer[0] == 'n')
 			{
 				break;

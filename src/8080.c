@@ -1,8 +1,8 @@
 #include "8080.h"
+#include "utils.h"
 #include "disassembler.h"
 #include "timer.h"
 #include <stdlib.h>
-
 
 const uint8_t instruction_cycles_table[256] = {
 	4, 10, 7, 5, 5, 5, 7, 4, 4, 10, 7, 5, 5, 5, 7, 4,
@@ -301,9 +301,10 @@ void RET()
 
 void JMP()
 {
-	// Since program counter gets incremented at the end of the Execute function decrement target PC by 1 for all branch instructons
+	CPU.PC = ((uint16_t)(CPU.MEM[CPU.PC + 1]) | (uint16_t)(CPU.MEM[CPU.PC + 2] << 8));
+	// Since program counter gets incremented at the end of the Execute function decrement target PC by 1 in JMP and CALL
 	// (less typing since most instructions dont manipulate PC directly)
-	CPU.PC = ((uint16_t)(CPU.MEM[CPU.PC + 1]) | (uint16_t)(CPU.MEM[CPU.PC + 2] << 8)) - 1;
+	CPU.PC -= 1;
 }
 
 void CALL()
@@ -312,9 +313,11 @@ void CALL()
 	uint16_t high_order_addr = --CPU.SP;
 	uint16_t low_order_addr = --CPU.SP;
 	StoreRP(&CPU.MEM[high_order_addr], &CPU.MEM[low_order_addr], next_instruction_addr);
-	// Since program counter gets incremented at the end of the Execute function decrement target PC by 1 for all branch instructons
+
+	CPU.PC = ((uint16_t)(CPU.MEM[CPU.PC + 1]) | CPU.MEM[CPU.PC + 2] << 8);
+	// Since program counter gets incremented at the end of the Execute function decrement target PC by 1 in JMP and CALL
 	// (less typing since most instructions dont manipulate PC directly)
-	CPU.PC = ((uint16_t)(CPU.MEM[CPU.PC + 1]) | CPU.MEM[CPU.PC + 2] << 8) - 1;
+	CPU.PC -= 1;
 }
 
 void IO_OUT()
@@ -1480,9 +1483,7 @@ void LoadProgram()
 
 	while (!file_read)
 	{
-		printf("Give program file name: ");
-		scanf_s("%255s", file_name, 256);
-		fseek(stdin, 0, SEEK_END);
+		TextInputPrompt("Give program file name: ", file_name);
 		file_read = LoadFile(file_name, &object_file_data, &file_size);
 	}
 
@@ -1499,7 +1500,7 @@ void LoadProgram()
 void StepThroughProgram(uint64_t *instructions_executed)
 {
 	int32_t intstructions_to_run = 0;
-	int option = 0;
+	uint32_t option = 0;
 	char code_line[CODE_LINE_LENGTH];
 	char print_line[DISASSEMBLY_LINE_PREFIX_LENGTH + CODE_LINE_LENGTH];
 
@@ -1512,9 +1513,7 @@ void StepThroughProgram(uint64_t *instructions_executed)
 				printf("\n");
 				GetDisassemblyLine(&CPU.MEM, CPU.PC, print_line);
 				
-				printf("1. Execute the next instruction [ %s]\n2. Execute specified amount of instructions\n3. Print CPU state\n", print_line);
-				scanf_s("%1d", &option);
-				fseek(stdin, 0, SEEK_END);
+				option = NumInputPrompt("1. Execute the next instruction [ %s]\n2. Execute specified amount of instructions\n3. Print CPU state\n", print_line);
 
 				if (option == 1)
 				{
@@ -1527,11 +1526,12 @@ void StepThroughProgram(uint64_t *instructions_executed)
 				}
 				else if (option == 2)
 				{
-					printf("Give amount of instructions to execute\n");
-					scanf_s("%d", &intstructions_to_run);
-					fseek(stdin, 0, SEEK_END);
-					printf("\n");
-					break;
+					intstructions_to_run = NumInputPrompt("Give amount of instructions to execute\n");
+					if (intstructions_to_run > 0)
+					{
+						printf("\n");
+						break;
+					}
 				}
 			}
 		}
@@ -1561,13 +1561,11 @@ void Run()
 
 	LoadProgram();
 
-	int run_option = 0;
+	uint32_t run_option = 0;
 
 	while (1)
 	{
-		printf("1. Run program\n2. Step through program\n");
-		scanf_s("%1d", &run_option);
-		fseek(stdin, 0, SEEK_END);
+		run_option = NumInputPrompt("1. Run program\n2. Step through program\n");
 
 		if (run_option == 1 || run_option == 2)
 		{

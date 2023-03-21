@@ -22,11 +22,13 @@
     <ClCompile Include="src\8080.c" />
     <ClCompile Include="src\disassembler.c" />
     <ClCompile Include="src\main.c" />
+    <ClCompile Include="src\utils.c" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\8080.h" />
     <ClInclude Include="src\disassembler.h" />
     <ClInclude Include="src\timer.h" />
+    <ClInclude Include="src\utils.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>
