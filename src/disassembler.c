@@ -35,25 +35,25 @@ int LoadFile(const char* file_name, uint8_t** file_data, uint16_t* file_size)
 			if (*file_data != NULL)
 			{
 				fread(*file_data, sizeof(uint8_t), *file_size, object_file);
-				printf("Read %u bytes from file \"%s\"\n", *file_size, file_name);
+				printf("Read %u bytes from file \"%s\"\n\n", *file_size, file_name);
 			}
 			else
 			{
-				printf("Couldn't allocate file data\n");
+				printf("Couldn't allocate file data\n\n");
 				fclose(object_file);
 				return 0;
 			}
 		}
 		else
 		{
-			printf("Couldn't read file \"%s\". File is too big %llu bytes (max size %u bytes)\n", file_name, size, UINT16_MAX);
+			printf("Couldn't read file \"%s\". File is too big %llu bytes (max size %u bytes)\n\n", file_name, size, UINT16_MAX);
 			fclose(object_file);
 			return 0;
 		}
 	}
 	else
 	{
-		printf("Couldn't open file %s\n", file_name);
+		printf("Couldn't open file \"%s\"\n\n", file_name);
 		return 0;
 	}
 	fclose(object_file);
@@ -143,6 +143,7 @@ int Disassemble()
 		{
 			printf("Give file name to disassemble: ");
 			scanf_s("%255s", file_name, 256);
+			fseek(stdin, 0, SEEK_END);
 			file_read = LoadFile(file_name, &object_file_data, &file_size);
 		}
 		
@@ -152,7 +153,7 @@ int Disassemble()
 		{
 			printf("Print disassembly to:\n1. console\n2. text file\n3. Both\n");
 			scanf_s("%1d", &print_option);
-			getchar();
+			fseek(stdin, 0, SEEK_END);
 
 			if (print_option == 1 || print_option == 2 || print_option == 3)
 			{
@@ -169,6 +170,7 @@ int Disassemble()
 			{
 				printf("Give the disassembly text file name: ");
 				scanf_s("%255s", disassembly_file_name, 256);
+				fseek(stdin, 0, SEEK_END);
 				disassembly_file = fopen(disassembly_file_name, "w");
 
 				if (disassembly_file == NULL)
@@ -220,12 +222,12 @@ int Disassemble()
 		}
 
 		char answer[2];
-
+		printf("\n");
 		while (1)
 		{
 			printf("Disassemble another file? y/n\n");
 			scanf_s("%1s", answer, 2);
-			getchar();
+			fseek(stdin, 0, SEEK_END);
 
 			if (answer[0] == 'y' || answer[0] == 'n')
 			{
@@ -238,6 +240,6 @@ int Disassemble()
 			break;
 		}
 	}
-	printf("Exiting disassembler...");
+	printf("Exiting disassembler...\n\n");
 	return 0;
 }

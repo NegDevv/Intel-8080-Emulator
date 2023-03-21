@@ -1512,7 +1512,7 @@ void StepThroughProgram(uint64_t *instructions_executed)
 				printf("\n");
 				GetDisassemblyLine(&CPU.MEM, CPU.PC, print_line);
 				
-				printf("1 Execute the next instruction [ %s]\n2 Execute specified amount of instructions\n3 Print CPU state\n", print_line);
+				printf("1. Execute the next instruction [ %s]\n2. Execute specified amount of instructions\n3. Print CPU state\n", print_line);
 				scanf_s("%1d", &option);
 				fseek(stdin, 0, SEEK_END);
 
@@ -1561,7 +1561,6 @@ void Run()
 
 	LoadProgram();
 
-	
 	int run_option = 0;
 
 	while (1)
@@ -1588,7 +1587,7 @@ void Run()
 	// Invaders stuck in infinite loop after instruction 42044 (waiting for IO)
 
 	// Run a program
-	if (run_option == 0)
+	if (run_option == 1)
 	{
 		while (!test_finished)
 		{
