@@ -179,6 +179,8 @@ int Disassemble()
 			}
 		}
 
+		printf("\n");
+
 		char print_line[DISASSEMBLY_LINE_PREFIX_LENGTH + CODE_LINE_LENGTH];
 
 		uint16_t PC = 0;
@@ -213,7 +215,7 @@ int Disassemble()
 
 		if (print_option == 2 || print_option == 3)
 		{
-			printf("Wrote disassembly of %s into file %s\n", file_name, disassembly_file_name);
+			printf("\nWrote disassembly of %s into file %s\n", file_name, disassembly_file_name);
 		}
 
 		char answer[256];
