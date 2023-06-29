@@ -145,6 +145,11 @@ int Disassemble()
 			TextInputPrompt("Give file name to disassemble: ", file_name);
 			file_read = LoadFile(file_name, &object_file_data, &file_size);
 		}
+
+		uint16_t org = 0x0000;
+
+		org = NumInputPrompt("Give disassembly origin address: ");
+		printf("Starting disassembly at 0x%04X \n", org);
 		
 		uint32_t print_option = 0;
 		
@@ -183,7 +188,7 @@ int Disassemble()
 
 		char print_line[DISASSEMBLY_LINE_PREFIX_LENGTH + CODE_LINE_LENGTH];
 
-		uint16_t PC = 0;
+		uint16_t PC = org;
 		while(PC < file_size)
 		{
 			uint8_t instruction_length = GetDisassemblyLine(object_file_data, PC, print_line);

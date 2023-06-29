@@ -13,16 +13,17 @@ const uint8_t instruction_cycles_table[256] = {
 	5, 5, 5, 5, 5, 5, 7, 5, 5, 5, 5, 5, 5, 5, 7, 5,
 	5, 5, 5, 5, 5, 5, 7, 5, 5, 5, 5, 5, 5, 5, 7, 5,
 	7, 7, 7, 7, 7, 7, 7, 7, 5, 5, 5, 5, 5, 5, 7, 5,
-	4, 4, 4, 4, 4, 4, 4, 7, 4, 4, 4, 4, 4, 4, 7, 4,
-	4, 4, 4, 4, 4, 4, 4, 7, 4, 4, 4, 4, 4, 4, 7, 4,
-	4, 4, 4, 4, 4, 4, 4, 7, 4, 4, 4, 4, 4, 4, 7, 4,
-	4, 4, 4, 4, 4, 4, 4, 7, 4, 4, 4, 4, 4, 4, 7, 4,
+	4, 4, 4, 4, 4, 4, 7, 4, 4, 4, 4, 4, 4, 4, 7, 4,
+	4, 4, 4, 4, 4, 4, 7, 4, 4, 4, 4, 4, 4, 4, 7, 4,
+	4, 4, 4, 4, 4, 4, 7, 4, 4, 4, 4, 4, 4, 4, 7, 4,
+	4, 4, 4, 4, 4, 4, 7, 4, 4, 4, 4, 4, 4, 4, 7, 4,
 	5, 10, 10, 10, 11, 11, 7, 11, 5, 10, 10, 10, 11, 17, 7, 11,
 	5, 10, 10, 10, 11, 11, 7, 11, 5, 10, 10, 10, 11, 17, 7, 11,
-	5, 10, 10, 18, 11, 11, 7, 11, 5, 5, 10, 5, 11, 17, 7, 11,
+	5, 10, 10, 18, 11, 11, 7, 11, 5, 5, 10, 4, 11, 17, 7, 11,
 	5, 10, 10, 4, 11, 11, 7, 11, 5, 5, 10, 4, 11, 17, 7, 11
 };
 
+// Cycles per instruction differs for conditional branch instructions when they are taken
 const uint8_t instruction_cycles_table_secondary[256] = {
 	4, 10, 7, 5, 5, 5, 7, 4, 4, 10, 7, 5, 5, 5, 7, 4,
 	4, 10, 7, 5, 5, 5, 7, 4, 4, 10, 7, 5, 5, 5, 7, 4,
@@ -57,6 +58,8 @@ void PrintCPUState()
 	printf("\nH: 0x%02X 0b"BYTE_TO_BINARY_PATTERN" (% u)", CPU.REG_H, BYTE_TO_BINARY(CPU.REG_H), CPU.REG_H);
 	printf("\nL: 0x%02X 0b"BYTE_TO_BINARY_PATTERN" (% u)", CPU.REG_L, BYTE_TO_BINARY(CPU.REG_L), CPU.REG_L);
 
+	printf("\nCYCLES: %llu", CPU.CYCLES);
+
 	printf("\n\n");
 }
 
@@ -65,7 +68,7 @@ void InitCPU()
 	CPU.PC = 0x0000;
 	CPU.SP = 0xFFFF;
 
-	CPU.FLAGS = 0b00000000;
+	CPU.FLAGS = 0b00000010;
 	CPU.REG_A = 0x00;
 	CPU.REG_B = 0x00;
 	CPU.REG_C = 0x00;
@@ -77,6 +80,8 @@ void InitCPU()
 	CPU.HLT = 0;
 	CPU.INT = 0;
 
+	CPU.CYCLES = 0;
+
 	memset(CPU.MEM, 0, MEMORY_SIZE);
 }
 
@@ -85,7 +90,7 @@ void Interrupt()
 
 }
 
-// Changes n bit to value indicated by parameter value. n = 0 is the least significant bit
+// Changes n bit of num to value indicated by parameter value. n = 0 is the least significant bit
 uint8_t ChangeNBit(uint8_t num, uint8_t n, bool value)
 {
 	return num & ~(1 << n) | (value << n);
@@ -96,7 +101,7 @@ void CarryFlag(uint8_t value_1, uint8_t value_2, bool carry)
 {
 	int16_t result = value_1 + value_2 + carry;
 	int16_t c = result ^ value_1 ^ value_2;
-	ChangeNBit(CPU.FLAGS, CARRY_FLAG_BIT, c & (1 << 8));
+	CPU.FLAGS = ChangeNBit(CPU.FLAGS, CARRY_FLAG_BIT, (c  & (1 << 8)) >> 8);
 }
 
 void ParityFlag(uint8_t result)
@@ -107,15 +112,15 @@ void ParityFlag(uint8_t result)
 	{
 		set_bits += ((result >> i) & 1);
 	}
-	// Sets parity flag (1) if number of set (1) bits is odd, otherwise parity flag is cleared (0)
-	CPU.FLAGS = ChangeNBit(CPU.FLAGS, PARITY_FLAG_BIT, ((set_bits & 1) == 1));
+	// Sets parity flag (1) if number of set (1) bits is even, otherwise parity flag is cleared (0)
+	CPU.FLAGS = ChangeNBit(CPU.FLAGS, PARITY_FLAG_BIT, ((set_bits & 1) == 0));
 }
 
 void AuxCarryFlag(uint8_t value_1, uint8_t value_2, bool carry)
 {
 	int16_t result = value_1 + value_2 + carry;
 	int16_t c = result ^ value_1 ^ value_2;
-	ChangeNBit(CPU.FLAGS, AUX_CARRY_FLAG_BIT, c & (1 << 4));
+	CPU.FLAGS = ChangeNBit(CPU.FLAGS, AUX_CARRY_FLAG_BIT, c & (1 << 4));
 }
 
 void ZeroFlag(uint8_t result)
@@ -297,6 +302,7 @@ void RET()
 	uint16_t addr = CombineRP(high_order_byte, low_order_byte);
 	CPU.PC = addr - 1;
 	CPU.SP += 1; // Increment SP by 1
+	CPU.CYCLES += 6;
 }
 
 void JMP()
@@ -318,12 +324,45 @@ void CALL()
 	// Since program counter gets incremented at the end of the Execute function decrement target PC by 1 in JMP and CALL
 	// (less typing since most instructions dont manipulate PC directly)
 	CPU.PC -= 1;
+	CPU.CYCLES += 6; // For all conditional calls that are taken add 6 cycles. (for unconditional call reverse this addition in switch case since its always 17 cycles)
+}
+
+void ReadPort(uint8_t port)
+{
+	if (port == 0) 
+	{
+		test_finished = 1;
+	}
+	else if (port == 1)
+	{
+		uint8_t operation = CPU.REG_C;
+
+		if (operation == 2) 
+		{ 
+			// Print a character stored in E
+			printf("%c", CPU.REG_E);
+		}
+		else if (operation == 9) 
+		{ 
+			// Print from memory at (DE) until '$' char
+			uint16_t addr = (CPU.REG_D << 8) | CPU.REG_E;
+			do 
+			{
+				printf("%c", CPU.MEM[addr++]);
+			} 
+			while (CPU.MEM[addr] != '$');
+		}
+	}
 }
 
 void IO_OUT()
 {
 	uint8_t port = CPU.MEM[++CPU.PC];
 	CPU.IO_OUT[port] = CPU.REG_A;
+
+#ifdef DEBUG
+	ReadPort(port);
+#endif // DEBUG
 }
 
 void IO_IN()
@@ -373,8 +412,9 @@ void Execute()
 		{
 			uint16_t HL = CombineRP(CPU.REG_H, CPU.REG_L);
 			uint16_t BC = CombineRP(CPU.REG_B, CPU.REG_C);
-			CPU.FLAGS = ChangeNBit(CPU.FLAGS, CARRY_FLAG_BIT, ((HL + BC) >> 16) & 1);
-			StoreRP(&CPU.REG_H, &CPU.REG_L, HL + BC);
+			uint32_t result = (uint32_t)HL + BC;
+			CPU.FLAGS = ChangeNBit(CPU.FLAGS, CARRY_FLAG_BIT, (result & 0xFFFF0000));
+			StoreRP(&CPU.REG_H, &CPU.REG_L, (uint16_t)result);
 		}
 			break;
 		case 0x0A:	//LDAX B
@@ -438,8 +478,9 @@ void Execute()
 		{
 			uint16_t HL = CombineRP(CPU.REG_H, CPU.REG_L);
 			uint16_t DE = CombineRP(CPU.REG_D, CPU.REG_E);
-			CPU.FLAGS = ChangeNBit(CPU.FLAGS, CARRY_FLAG_BIT, ((HL + DE) >> 16) & 1);
-			StoreRP(&CPU.REG_H, &CPU.REG_L, HL + DE);
+			uint32_t result = (uint32_t)HL + DE;
+			CPU.FLAGS = ChangeNBit(CPU.FLAGS, CARRY_FLAG_BIT, (result & 0xFFFF0000));
+			StoreRP(&CPU.REG_H, &CPU.REG_L, (uint16_t)result);
 		}
 			break;
 		case 0x1A:	//LDAX D
@@ -526,8 +567,9 @@ void Execute()
 		case 0x29:	//DAD H
 		{
 			uint16_t HL = CombineRP(CPU.REG_H, CPU.REG_L);
-			CPU.FLAGS = ChangeNBit(CPU.FLAGS, CARRY_FLAG_BIT, ((HL + HL) >> 16) & 1);
-			StoreRP(&CPU.REG_H, &CPU.REG_L, HL + HL);
+			uint32_t result = (uint32_t)HL + HL;
+			CPU.FLAGS = ChangeNBit(CPU.FLAGS, CARRY_FLAG_BIT, (result & 0xFFFF0000));
+			StoreRP(&CPU.REG_H, &CPU.REG_L, (uint16_t)result);
 		}
 			break;
 		case 0x2A:	//LHLD addr
@@ -604,8 +646,9 @@ void Execute()
 		{
 			uint16_t HL = CombineRP(CPU.REG_H, CPU.REG_L);
 			uint16_t SP = CPU.SP;
-			CPU.FLAGS = ChangeNBit(CPU.FLAGS, CARRY_FLAG_BIT, ((HL + SP) >> 16) & 1);
-			StoreRP(&CPU.REG_H, &CPU.REG_L, HL + SP);
+			uint32_t result = ((uint32_t)HL + SP);
+			CPU.FLAGS = ChangeNBit(CPU.FLAGS, CARRY_FLAG_BIT, (result & 0xFFFF0000));
+			StoreRP(&CPU.REG_H, &CPU.REG_L, (uint16_t)result);
 		}
 			break;
 		case 0x3A:	//LDA addr
@@ -1094,6 +1137,8 @@ void Execute()
 			uint16_t next_instruction_addr = CPU.PC + 1;
 			StoreRP(&CPU.MEM[high_order_addr], &CPU.MEM[low_order_addr], next_instruction_addr);
 			CPU.PC = 0x0000;
+			// Since program counter gets incremented at the end of the Execute function decrement target PC by 1
+			CPU.PC -= 1;
 		}
 			break;
 		case 0xC8:	//RZ
@@ -1104,6 +1149,7 @@ void Execute()
 			break;
 		case 0xC9:	//RET
 			RET();
+			CPU.CYCLES -= 6; // Since RET adds 6 cycles by default for conditional returns reverse that
 			break;
 		case 0xCA:	//JZ addr
 			if (GetZeroFlag())
@@ -1129,9 +1175,10 @@ void Execute()
 			break;
 		case 0xCD:	//CALL addr
 			CALL();
+			CPU.CYCLES -= 6; // Since CALL adds 6 cycles by default for conditional calls reverse that
 			break;
 		case 0xCE:	//ACI d8
-			ADD(CPU.REG_A, CPU.MEM[++CPU.PC], 1);
+			ADD(CPU.REG_A, CPU.MEM[++CPU.PC], GetCarryFlag());
 			break;
 		case 0xCF:	//RST 1
 		{
@@ -1140,6 +1187,8 @@ void Execute()
 			uint16_t next_instruction_addr = CPU.PC + 1;
 			StoreRP(&CPU.MEM[high_order_addr], &CPU.MEM[low_order_addr], next_instruction_addr);
 			CPU.PC = 0x0008;
+			// Since program counter gets incremented at the end of the Execute function decrement target PC by 1
+			CPU.PC -= 1;
 		}
 			break;
 		case 0xD0:	//RNC
@@ -1197,6 +1246,8 @@ void Execute()
 			uint16_t next_instruction_addr = CPU.PC + 1;
 			StoreRP(&CPU.MEM[high_order_addr], &CPU.MEM[low_order_addr], next_instruction_addr);
 			CPU.PC = 0x0010;
+			// Since program counter gets incremented at the end of the Execute function decrement target PC by 1
+			CPU.PC -= 1;
 		}
 			break;
 		case 0xD8:	//RC
@@ -1233,7 +1284,7 @@ void Execute()
 		case 0xDD:	//*CALL addr
 			break;
 		case 0xDE:	//SBI d8
-			SUB(CPU.REG_A, CPU.MEM[++CPU.PC], 1);
+			SUB(CPU.REG_A, CPU.MEM[++CPU.PC], GetCarryFlag());
 			break;
 		case 0xDF:	//RST 3
 		{
@@ -1242,6 +1293,8 @@ void Execute()
 			uint16_t next_instruction_addr = CPU.PC + 1;
 			StoreRP(&CPU.MEM[high_order_addr], &CPU.MEM[low_order_addr], next_instruction_addr);
 			CPU.PC = 0x0018;
+			// Since program counter gets incremented at the end of the Execute function decrement target PC by 1
+			CPU.PC -= 1;
 		}
 			break;
 		case 0xE0:	//RPO
@@ -1308,6 +1361,8 @@ void Execute()
 			uint16_t next_instruction_addr = CPU.PC + 1;
 			StoreRP(&CPU.MEM[high_order_addr], &CPU.MEM[low_order_addr], next_instruction_addr);
 			CPU.PC = 0x0020;
+			// Since program counter gets incremented at the end of the Execute function decrement target PC by 1
+			CPU.PC -= 1;
 		}
 			break;
 		case 0xE8:	//RPE
@@ -1318,6 +1373,8 @@ void Execute()
 			break;
 		case 0xE9:	//PCHL
 			CPU.PC = CombineRP(CPU.REG_H, CPU.REG_L);
+			// Since program counter gets incremented at the end of the Execute function decrement target PC by 1
+			CPU.PC -= 1;
 			break;
 		case 0xEA:	//JPE addr
 			if (GetParityFlag())
@@ -1363,6 +1420,8 @@ void Execute()
 			uint16_t next_instruction_addr = CPU.PC + 1;
 			StoreRP(&CPU.MEM[high_order_addr], &CPU.MEM[low_order_addr], next_instruction_addr);
 			CPU.PC = 0x0028;
+			// Since program counter gets incremented at the end of the Execute function decrement target PC by 1
+			CPU.PC -= 1;
 		}
 			break;
 		case 0xF0:	//RP
@@ -1376,6 +1435,9 @@ void Execute()
 			uint8_t low_order_byte = CPU.MEM[CPU.SP];
 			uint8_t high_order_byte = CPU.MEM[CPU.SP + 1];
 			uint16_t value = CombineRP(high_order_byte, low_order_byte);
+			CPU.FLAGS = ChangeNBit(CPU.FLAGS, 1, 1);
+			CPU.FLAGS = ChangeNBit(CPU.FLAGS, 3, 0);
+			CPU.FLAGS = ChangeNBit(CPU.FLAGS, 5, 0);
 			StoreRP(&CPU.REG_A, &CPU.FLAGS, value);
 			CPU.SP += 2;// Increment SP by 2
 		}
@@ -1407,6 +1469,9 @@ void Execute()
 		{
 			uint16_t A_addr = --CPU.SP;
 			uint16_t FLAGS_addr = --CPU.SP;
+			CPU.FLAGS = ChangeNBit(CPU.FLAGS, 1, 1);
+			CPU.FLAGS = ChangeNBit(CPU.FLAGS, 3, 0);
+			CPU.FLAGS = ChangeNBit(CPU.FLAGS, 5, 0);
 			StoreRP(&CPU.MEM[A_addr], &CPU.MEM[FLAGS_addr], CombineRP(CPU.REG_A, CPU.FLAGS));
 		}
 			break;
@@ -1420,6 +1485,8 @@ void Execute()
 			uint16_t next_instruction_addr = CPU.PC + 1;
 			StoreRP(&CPU.MEM[high_order_addr], &CPU.MEM[low_order_addr], next_instruction_addr);
 			CPU.PC = 0x0030;
+			// Since program counter gets incremented at the end of the Execute function decrement target PC by 1
+			CPU.PC -= 1;
 		}
 			break;
 		case 0xF8:	//RM
@@ -1466,12 +1533,15 @@ void Execute()
 			uint16_t next_instruction_addr = CPU.PC + 1;
 			StoreRP(&CPU.MEM[high_order_addr], &CPU.MEM[low_order_addr], next_instruction_addr);
 			CPU.PC = 0x0038;
+			// Since program counter gets incremented at the end of the Execute function decrement target PC by 1
+			CPU.PC -= 1;
 		}
 			break;
 	}
 
 	CPU.PC++; // Increment program counter
-	//PrintCPUState();
+
+	CPU.CYCLES += instruction_cycles_table[op_code];
 }
 
 void LoadProgram()
@@ -1489,6 +1559,21 @@ void LoadProgram()
 
 
 	CPU.PC = 0x0000;
+
+#ifdef DEBUG
+	// inject "out 0,a" at 0x0000 (signal to stop the test)
+	CPU.MEM[0x0000] = 0xD3;
+	CPU.MEM[0x0001] = 0x00;
+
+	// inject "out 1,a" at 0x0005 (signal to output some characters)
+	CPU.MEM[0x0005] = 0xD3;
+	CPU.MEM[0x0006] = 0x01;
+	CPU.MEM[0x0007] = 0xC9;
+
+	CPU.PC = 0x100;
+#endif // DEBUG
+
+
 	memcpy(&CPU.MEM[CPU.PC], object_file_data, file_size);
 
 	printf("%s loaded at 0x%X\n\n", file_name, CPU.PC);
@@ -1573,7 +1658,9 @@ void Run()
 		}
 	}
 
-	uint64_t cycle_start_time = ns(), cycle_end_time = ns(), cycle_time = 0;
+	uint64_t cycle_start_time = ns(), cycle_end_time = ns(), cycle_time = 0, total_time = 0;
+
+	uint64_t start_time = ns(), end_time = 0;
 
 	const uint64_t clock_frq = 2'000'000;
 	uint64_t clock_in_ns = 1e9 / clock_frq;
@@ -1592,7 +1679,6 @@ void Run()
 			cycle_time = cycle_end_time - cycle_start_time;
 			if (cycle_time >= clock_in_ns)
 			{
-				//printf("cycle time: %lluns\n----------------------\n", cycle_time);
 				cycle_start_time = ns();
 
 				Execute();
@@ -1600,12 +1686,16 @@ void Run()
 			}
 			cycle_end_time = ns();
 		}
-		printf("Test finished\nInstructions executed: %llu\n", instructions_executed);
+		end_time = ns();
+		total_time = end_time - start_time;
+		uint64_t instructions_per_second = (uint64_t)(((double)instructions_executed / total_time) * 1e3);
+		uint64_t emulated_clock_freq_avg = (uint64_t)(((double)CPU.CYCLES / total_time) * 1e3);
+		printf("\n\nTest finished!\nInstructions executed: %llu\nCycles: %llu\nTime taken: %llu ns\nInstructions per second: %lluM\nAverage emulated clock frequency: %lluMhz\n\n", instructions_executed, CPU.CYCLES, total_time, instructions_per_second, emulated_clock_freq_avg);
 	}
 	// Step through a program
 	else if(run_option == 2)
 	{
 		StepThroughProgram(&instructions_executed);
-		printf("Test finished\nInstructions executed: %llu\n", instructions_executed);
+		printf("\n\nTest finished!\nInstructions executed: %llu\nCycles: %llu\n\n", instructions_executed, CPU.CYCLES);
 	}
 }

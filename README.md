@@ -9,16 +9,83 @@
  - [x] Disassembler
  - [x] All instructions implemented
  - [x] Program loader
- - [] Proper CPU emulation verified
- - [] Debug GUI?
+ - [x] Proper CPU emulation verified
+ - [-] Debug GUI?
  - [x] Step by step program execution
- - [] I/O hardware implemented
+ - [-] I/O hardware implemented
+
+
+The emulator currently passes the following tests:
+ - [x] 8080EXM.COM
+ - [x] 8080PRE.COM
+ - [x] cpudiag.bin
+ - [x] CPUTEST.COM
+ - [x] TST8080.COM
 
  ## Usage
 
- The disassembler is working and can be tested with the provided test ROMs in the [tests](tests/) folder.
+ The emulator and disassembler can be tested with the provided test ROMs in the [tests](tests/) folder.
 
-Example:
+
+**Emulator example:**
+
+1. Build and run the Visual Studio Solution
+ 2. Press 1 to select the emulator and hit enter
+ 3. Enter filename e.g. tests/8080EXM.COM and hit enter
+ 4. Select run mode and hit enter
+
+```
+Intel 8080 Emulator
+1. Emulator
+2. Disassembler
+3. Quit
+1
+
+Give program file name: tests/8080EXM.COM
+Read 4608 bytes from file "tests/8080EXM.COM"
+
+tests/8080EXM.COM loaded at 0x100
+
+1. Run program
+2. Step through program
+1
+8080 instruction exerciser
+dad <b,d,h,sp>................  PASS! crc is:14474ba6
+aluop nn......................  PASS! crc is:9e922f9e
+aluop <b,c,d,e,h,l,m,a>.......  PASS! crc is:cf762c86
+<daa,cma,stc,cmc>.............  PASS! crc is:bb3f030c
+<inr,dcr> a...................  PASS! crc is:adb6460e
+<inr,dcr> b...................  PASS! crc is:83ed1345
+<inx,dcx> b...................  PASS! crc is:f79287cd
+<inr,dcr> c...................  PASS! crc is:e5f6721b
+<inr,dcr> d...................  PASS! crc is:15b5579a
+<inx,dcx> d...................  PASS! crc is:7f4e2501
+<inr,dcr> e...................  PASS! crc is:cf2ab396
+<inr,dcr> h...................  PASS! crc is:12b2952c
+<inx,dcx> h...................  PASS! crc is:9f2b23c0
+<inr,dcr> l...................  PASS! crc is:ff57d356
+<inr,dcr> m...................  PASS! crc is:92e963bd
+<inx,dcx> sp..................  PASS! crc is:d5702fab
+lhld nnnn.....................  PASS! crc is:a9c3d5cb
+shld nnnn.....................  PASS! crc is:e8864f26
+lxi <b,d,h,sp>,nnnn...........  PASS! crc is:fcf46e12
+ldax <b,d>....................  PASS! crc is:2b821d5f
+mvi <b,c,d,e,h,l,m,a>,nn......  PASS! crc is:eaa72044
+mov <bcdehla>,<bcdehla>.......  PASS! crc is:10b58cee
+sta nnnn / lda nnnn...........  PASS! crc is:ed57af72
+<rlc,rrc,ral,rar>.............  PASS! crc is:e0d89235
+stax <b,d>....................  PASS! crc is:2b0471e9
+Tests complete
+
+Test finished!
+Instructions executed: 2919050698
+Cycles: 23803381171
+Time taken: 10365668300 ns
+Instructions per second: 281M
+Average emulated clock frequency: 2296Mhz
+```
+
+**Disassembler example:**
 
  1. Build and run the Visual Studio Solution
  2. Press 2 to select the disassembler and hit enter

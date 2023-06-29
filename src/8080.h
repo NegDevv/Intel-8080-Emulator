@@ -10,6 +10,8 @@
 
 #define MEMORY_SIZE 64000
 
+#define DEBUG
+
 #define BYTE_TO_BINARY_PATTERN "%c%c%c%c%c%c%c%c"
 #define BYTE_TO_BINARY(uint8_t)  \
   (uint8_t & 0x80 ? '1' : '0'), \
@@ -46,6 +48,8 @@ struct CPU
 
 	uint8_t IO_IN[256];
 	uint8_t IO_OUT[256];
+
+	uint64_t CYCLES;
 
 	uint8_t MEM[MEMORY_SIZE];
 }CPU;
