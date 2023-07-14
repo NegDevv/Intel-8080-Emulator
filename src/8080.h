@@ -8,9 +8,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#define MEMORY_SIZE 64000
-
-#define DEBUG
+#define MEMORY_SIZE 0xFFFF
 
 #define BYTE_TO_BINARY_PATTERN "%c%c%c%c%c%c%c%c"
 #define BYTE_TO_BINARY(uint8_t)  \
@@ -54,6 +52,9 @@ struct CPU
 	uint8_t MEM[MEMORY_SIZE];
 }CPU;
 
+uint64_t instruction_frequency;
+
+bool test_mode;
 
 bool test_finished;
 
@@ -64,6 +65,8 @@ const uint8_t instruction_cycles_table_secondary[256];
 void PrintCPUState();
 
 void InitCPU();
+
+void Configure();
 
 void Interrupt();
 

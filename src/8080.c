@@ -3,6 +3,7 @@
 #include "disassembler.h"
 #include "timer.h"
 #include <stdlib.h>
+#include <math.h>
 
 const uint8_t instruction_cycles_table[256] = {
 	4, 10, 7, 5, 5, 5, 7, 4, 4, 10, 7, 5, 5, 5, 7, 4,
@@ -43,6 +44,10 @@ const uint8_t instruction_cycles_table_secondary[256] = {
 	11, 10, 10, 4, 17, 11, 7, 11, 11, 5, 10, 4, 17, 17, 7, 11
 };
 
+uint64_t instruction_frequency = 0;
+
+bool test_mode = true;
+
 void PrintCPUState()
 {
 	printf("\nPC: 0x%X", CPU.PC);
@@ -65,7 +70,16 @@ void PrintCPUState()
 
 void InitCPU()
 {
-	CPU.PC = 0x0000;
+	if (test_mode)
+	{
+		CPU.PC = 0x0100;
+	}
+	else
+	{
+		CPU.PC = 0x0000;
+	}
+
+	
 	CPU.SP = 0xFFFF;
 
 	CPU.FLAGS = 0b00000010;
@@ -83,6 +97,115 @@ void InitCPU()
 	CPU.CYCLES = 0;
 
 	memset(CPU.MEM, 0, MEMORY_SIZE);
+}
+
+void Configure()
+{
+	uint32_t configure_option = 0;
+
+	while (true)
+	{
+		configure_option = NumInputPrompt("1. Set instruction frequency (%llu)\n2. Set program counter (0x%04X)\n3. Enable/Disable test mode (%u)\n4. Load defaults\n5. Return\n", instruction_frequency, CPU.PC, test_mode);
+
+		// Set instruction frequency
+		if (configure_option == 1)
+		{
+			uint32_t instruction_speed_option = 0;
+			while (true)
+			{
+				instruction_speed_option = NumInputPrompt("Set instruction frequency\n1. Unlimited(default)\n2. 2Mhz\n3. 10Mhz\n4. Custom\n");
+				if (instruction_speed_option == 1)
+				{
+					instruction_frequency = 0;
+				}
+				else if (instruction_speed_option == 2)
+				{
+					instruction_frequency = 2'000'000;
+				}
+				else if (instruction_speed_option == 3)
+				{
+					instruction_frequency = 10'000'000;
+				}
+				else if (instruction_speed_option == 4)
+				{
+					instruction_frequency = NumInputPrompt("Enter instruction frequency: ");
+				}
+
+				if (instruction_speed_option != 0)
+				{
+					if (instruction_speed_option == 1)
+					{
+						printf("Instruction frequency target set to unlimited\n\n");
+					}
+					else
+					{
+						printf("Instruction frequency target set to %llu\n\n", instruction_frequency);
+					}
+					break;
+				}
+			}
+		}
+		// Set program counter
+		else if (configure_option == 2)
+		{
+			uint64_t target_pc = 0;
+
+			while (true)
+			{
+				target_pc = NumInputPrompt("Enter program counter address (0 - 65535): ");
+
+				if (target_pc <= 0xFFFF)
+				{
+					CPU.PC = target_pc;
+					printf("Program counter set to  0x%04X\n", CPU.PC);
+					break;
+				}
+				else
+				{
+					printf("Target PC value is outside of the memory range 0 - 65535\n");
+				}
+			}
+		}
+		// Enable/Disable test mode
+		else if (configure_option == 3)
+		{
+			while (true)
+			{
+				uint32_t enable_test_mode = NumInputPrompt("Enable/Disable test mode (%u): ", test_mode);
+				if (enable_test_mode == 0)
+				{
+					test_mode = false;
+					printf("Test mode disabled (%u)\n\n", test_mode);
+					break;
+				}
+				else if (enable_test_mode == 1)
+				{
+					test_mode = true;
+					CPU.PC = 0x100;
+					printf("Test mode enabled (%u)\nProgram counter set to 0x%04X\n\n", test_mode, CPU.PC);
+					break;
+				}
+				else
+				{
+					printf("Enter 0(Disable) or 1(Enable)\n");
+				}
+			}
+		}
+		// Load defaults
+		else if (configure_option == 4)
+		{
+			instruction_frequency = 0;
+			test_mode = true;
+			CPU.PC = 0x100;
+			printf("Loaded default values\n\n");
+		}
+		// Exit configuration
+		else if (configure_option == 5)
+		{
+			return;
+		}
+	}
+
 }
 
 void Interrupt()
@@ -339,7 +462,7 @@ void ReadPort(uint8_t port)
 
 		if (operation == 2) 
 		{ 
-			// Print a character stored in E
+			// Print a character stored in E register
 			printf("%c", CPU.REG_E);
 		}
 		else if (operation == 9) 
@@ -360,9 +483,10 @@ void IO_OUT()
 	uint8_t port = CPU.MEM[++CPU.PC];
 	CPU.IO_OUT[port] = CPU.REG_A;
 
-#ifdef DEBUG
-	ReadPort(port);
-#endif // DEBUG
+	if (test_mode)
+	{
+		ReadPort(port);
+	}
 }
 
 void IO_IN()
@@ -1558,20 +1682,17 @@ void LoadProgram()
 	}
 
 
-	CPU.PC = 0x0000;
+	if (test_mode)
+	{
+		// Inject "OUT 0,A" at 0x0000 (signal to stop the test)
+		CPU.MEM[0x0000] = 0xD3;
+		CPU.MEM[0x0001] = 0x00;
 
-#ifdef DEBUG
-	// inject "out 0,a" at 0x0000 (signal to stop the test)
-	CPU.MEM[0x0000] = 0xD3;
-	CPU.MEM[0x0001] = 0x00;
-
-	// inject "out 1,a" at 0x0005 (signal to output some characters)
-	CPU.MEM[0x0005] = 0xD3;
-	CPU.MEM[0x0006] = 0x01;
-	CPU.MEM[0x0007] = 0xC9;
-
-	CPU.PC = 0x100;
-#endif // DEBUG
+		// Inject "OUT 1,A" at 0x0005 (signal to output characters)
+		CPU.MEM[0x0005] = 0xD3;
+		CPU.MEM[0x0006] = 0x01;
+		CPU.MEM[0x0007] = 0xC9;
+	}
 
 
 	memcpy(&CPU.MEM[CPU.PC], object_file_data, file_size);
@@ -1662,8 +1783,7 @@ void Run()
 
 	uint64_t start_time = ns(), end_time = 0;
 
-	const uint64_t clock_frq = 2'000'000;
-	uint64_t clock_in_ns = 1e9 / clock_frq;
+	uint64_t cycle_in_ns = 1e9 / instruction_frequency;
 
 	uint64_t instructions_executed = 0;
 
@@ -1674,23 +1794,37 @@ void Run()
 	// Run a program
 	if (run_option == 1)
 	{
-		while (!test_finished)
-		{
-			cycle_time = cycle_end_time - cycle_start_time;
-			if (cycle_time >= clock_in_ns)
-			{
-				cycle_start_time = ns();
+		// NOTE: instruction_frequency is emulation instruction frequency not "clock frequency". One instruction often increases CPU.CYCLES by multiple
 
+		// Unlimited clock speed selected
+		if (instruction_frequency == 0)
+		{
+			while (!test_finished)
+			{
 				Execute();
 				instructions_executed += 1;
 			}
-			cycle_end_time = ns();
+		}
+		else
+		{
+			while (!test_finished)
+			{
+				cycle_time = cycle_end_time - cycle_start_time;
+				if (cycle_time >= cycle_in_ns)
+				{
+					cycle_start_time = ns(); // Time measuring can cause a lot of overhead in high cycle frequencies. Use unlimited instruction speed for fast testing
+
+					Execute();
+					instructions_executed += 1;
+				}
+				cycle_end_time = ns();
+			}
 		}
 		end_time = ns();
 		total_time = end_time - start_time;
-		uint64_t instructions_per_second = (uint64_t)(((double)instructions_executed / total_time) * 1e3);
-		uint64_t emulated_clock_freq_avg = (uint64_t)(((double)CPU.CYCLES / total_time) * 1e3);
-		printf("\n\nTest finished!\nInstructions executed: %llu\nCycles: %llu\nTime taken: %llu ns\nInstructions per second: %lluM\nAverage emulated clock frequency: %lluMhz\n\n", instructions_executed, CPU.CYCLES, total_time, instructions_per_second, emulated_clock_freq_avg);
+		double instructions_per_second = (((double)instructions_executed / total_time) * 1e3);
+		uint64_t emulated_clock_freq_avg = (uint64_t)round(((double)CPU.CYCLES / total_time) * 1e3);
+		printf("\n\nTest finished!\nInstructions executed: %llu\nCycles: %llu\nTime taken: %lluns\nInstructions per second: %.2fM\nAverage emulated clock frequency: %lluMhz\n\n", instructions_executed, CPU.CYCLES, total_time, instructions_per_second, emulated_clock_freq_avg);
 	}
 	// Step through a program
 	else if(run_option == 2)

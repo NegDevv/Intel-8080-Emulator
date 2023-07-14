@@ -1,12 +1,26 @@
 #include "utils.h"
 #include <stdio.h>
 
-// Prompt user for input and read and return one unsigned integer
+// Prompt user for input and read and return one 32-bit unsigned integer
 uint32_t NumInputPrompt(const char* prompt)
 {
 	uint32_t num;
 	printf(prompt);
 	if (!(scanf_s("%u", &num) == 1))
+	{
+		num = 0;
+		printf("Invalid input!\n\n");
+	}
+	fseek(stdin, 0, SEEK_END);
+	return num;
+}
+
+// Prompt user for input and read and return one 64-bit unsigned integer
+uint64_t NumInputPrompt64(const char* prompt)
+{
+	uint64_t num;
+	printf(prompt);
+	if (!(scanf_s("%llu", &num) == 1))
 	{
 		num = 0;
 		printf("Invalid input!\n\n");

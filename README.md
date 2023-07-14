@@ -10,7 +10,6 @@
  - [x] All instructions implemented
  - [x] Program loader
  - [x] Proper CPU emulation verified
- - [-] Debug GUI?
  - [x] Step by step program execution
  - [-] I/O hardware implemented
 
@@ -31,8 +30,9 @@ The emulator currently passes the following tests:
 
 1. Build and run the Visual Studio Solution
  2. Press 1 to select the emulator and hit enter
- 3. Enter filename e.g. tests/8080EXM.COM and hit enter
- 4. Select run mode and hit enter
+ 3. Press 1 to select run and hit enter
+ 4. Enter filename e.g. tests/8080EXM.COM and hit enter
+ 5. Select run mode and hit enter
 
 ```
 Intel 8080 Emulator
@@ -41,6 +41,10 @@ Intel 8080 Emulator
 3. Quit
 1
 
+1. Run
+2. Configure
+3. Exit
+1
 Give program file name: tests/8080EXM.COM
 Read 4608 bytes from file "tests/8080EXM.COM"
 
@@ -80,8 +84,8 @@ Tests complete
 Test finished!
 Instructions executed: 2919050698
 Cycles: 23803381171
-Time taken: 10365668300 ns
-Instructions per second: 281M
+Time taken: 10366962700ns
+Instructions per second: 281.57M
 Average emulated clock frequency: 2296Mhz
 ```
 
