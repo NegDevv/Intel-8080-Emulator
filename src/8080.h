@@ -148,10 +148,13 @@ void IO_OUT();
 
 void IO_IN();
 
-
 void Execute();
 
 void LoadProgram();
+
+void StepThroughProgram(uint64_t* instructions_executed);
+
+void ExecuteTestMode();
 
 void Run();
 

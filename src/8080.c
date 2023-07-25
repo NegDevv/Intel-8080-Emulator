@@ -482,11 +482,6 @@ void IO_OUT()
 {
 	uint8_t port = CPU.MEM[++CPU.PC];
 	CPU.IO_OUT[port] = CPU.REG_A;
-
-	if (test_mode)
-	{
-		ReadPort(port);
-	}
 }
 
 void IO_IN()
@@ -1762,6 +1757,34 @@ void StepThroughProgram(uint64_t *instructions_executed)
 	}
 }
 
+void ExecuteTestMode()
+{
+	// I/O handling for test mode
+	uint8_t op_code = CPU.MEM[CPU.PC];
+	if (op_code == 0xDB) // IN
+	{
+		uint8_t port = CPU.MEM[++CPU.PC];
+		CPU.REG_A = CPU.IO_IN[port];
+
+		// Test mode code here
+
+		CPU.PC += 1;
+	}
+	else if (op_code == 0xD3) // OUT
+	{
+		uint8_t port = CPU.MEM[++CPU.PC];
+		CPU.IO_OUT[port] = CPU.REG_A;
+
+		ReadPort(port);
+
+		CPU.PC += 1;
+	}
+	else
+	{
+		Execute();
+	}
+}
+
 void Run()
 {
 
@@ -1769,7 +1792,7 @@ void Run()
 
 	uint32_t run_option = 0;
 
-	while (1)
+	while (true)
 	{
 		run_option = NumInputPrompt("1. Run program\n2. Step through program\n");
 
@@ -1801,7 +1824,14 @@ void Run()
 		{
 			while (!test_finished)
 			{
-				Execute();
+				if (test_mode)
+				{
+					ExecuteTestMode();
+				}
+				else
+				{
+					Execute();
+				}
 				instructions_executed += 1;
 			}
 		}
@@ -1814,7 +1844,14 @@ void Run()
 				{
 					cycle_start_time = ns(); // Time measuring can cause a lot of overhead in high cycle frequencies. Use unlimited instruction speed for fast testing
 
-					Execute();
+					if (test_mode)
+					{
+						ExecuteTestMode();
+					}
+					else
+					{
+						Execute();
+					}
 					instructions_executed += 1;
 				}
 				cycle_end_time = ns();
